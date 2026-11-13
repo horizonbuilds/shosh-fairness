@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>שושים · טבלת צדק</title>
+<title>טבלת צדק</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=8">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,6 +21,16 @@
     padding: calc(20px + env(safe-area-inset-top)) 14px calc(34px + env(safe-area-inset-bottom));
   }
   .wrap { max-width:480px; margin:0 auto; }
+  .logo-link { display:inline-flex; align-items:center; justify-content:center; width:76px; height:76px;
+               border-radius:50%; margin-bottom:14px; text-decoration:none;
+               background: rgba(255,255,255,.55);
+               backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+               border: 1px solid rgba(255,255,255,.85);
+               box-shadow: 0 8px 22px rgba(100,116,180,.16);
+               transition: transform .18s ease, box-shadow .18s ease; }
+  .logo-link:hover { box-shadow: 0 10px 26px rgba(100,116,180,.22); }
+  .logo-link:active { transform: scale(.93); }
+  .logo-link img { width:62px; height:62px; object-fit:contain; display:block; }
   .card {
     background: rgba(255,255,255,.62);
     backdrop-filter: blur(18px);
@@ -45,7 +58,7 @@
   }
   .bar-wrap { flex:1; height:10px; border-radius:999px; background:rgba(148,163,184,.18); overflow:hidden; }
   .bar { height:100%; border-radius:999px; }
-  .counts { flex:none; width:118px; text-align:left; font-size:12px; color:#475569; font-weight:500; line-height:1.4; white-space:nowrap; }
+  .counts { flex:none; width:126px; text-align:left; font-size:12px; color:#475569; font-weight:500; line-height:1.4; white-space:nowrap; }
   .counts b { font-size:16px; color:#0f172a; font-weight:800; }
   .legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:12px; font-size:12px; color:#64748b; }
   .legend span { display:flex; align-items:center; gap:5px; }
@@ -82,21 +95,31 @@
   .how { font-size:13.5px; color:#475569; line-height:1.65; font-weight:500; }
   .how b { color:#0f172a; }
   .updated { text-align:center; font-size:12px; color:#94a3b8; margin-top:4px; font-weight:500; }
+  .dapa-choice { border:0; min-height:44px; cursor:pointer; font-family:inherit; background:#f1f5f9; color:#64748b; }
+  .dapa-choice[aria-pressed="true"] { background:#ede9fe; color:#6d28d9; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="card">
-    <h1>טבלת הצדק של השושים</h1>
+    <a class="logo-link" href="https://etrog-lv-tama.github.io/" aria-label="סמל קורס אתרוג ל״ו · לדף הבית של המגמה">
+      <img src="logo.png?v=8" alt="סמל קורס אתרוג ל״ו">
+    </a>
+    <h1>טבלת צדק</h1>
     <div class="sub">מחזור ל״ו · מי עשה, מי משובץ, וכמה יוצא לכל אחד</div>
+    <div class="legend" role="group" aria-label="בחירת דפא">
+      <button class="chip dapa-choice" type="button" id="dapa1" aria-pressed="true">דפ"א 1</button>
+      <button class="chip dapa-choice" type="button" id="dapa2" aria-pressed="false">דפ"א 2</button>
+    </div>
+    <div class="sub" id="scenario-note">דפ"א 1 · חמשוש ושבת חינוך נשארים ללא שיבוץ</div>
   </header>
 
   <section class="card">
     <h2><span class="dot" style="background:#6d28d9"></span>החלוקה ההוגנת</h2>
     <div id="fair"></div>
     <div class="legend">
-      <span><span class="sw" style="background:#94a3b8"></span>עבר = שוש שעבר</span>
+      <span><span class="sw" style="background:#94a3b8"></span>עבר = תורנות שעברה</span>
       <span><span class="sw" style="background:#38bdf8"></span>מתוכנן = שיבוץ קדימה</span>
     </div>
   </section>
@@ -115,7 +138,7 @@
   <div class="updated" id="upd"></div>
 </div>
 
-<script src="data.js"></script>
+<script src="data.js?v=20261015-1159"></script>
 <script>
 (function(){
   const chip = n => {
@@ -123,28 +146,69 @@
     return `<span class="chip" style="background:${c.bg};color:${c.fg}">${n}</span>`;
   };
 
+  // Dates belong to the course year, not the year the page is opened.
+  // A range stays planned through its final day (06-07/11 ends on 7 November).
+  const israelDate = () => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(new Date());
+    const part = type => parts.find(p => p.type === type).value;
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  };
+  const endDate = entry => {
+    if (entry.endDate) return entry.endDate;
+    const match = entry.date.match(/^(?:\d{1,2}-)?(\d{1,2})\/(\d{1,2})$/);
+    if (!match) return null;
+    const month = Number(match[2]);
+    return `${month === 1 ? 2027 : 2026}-${String(month).padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+  };
+  const isPast = (entry, today) => {
+    const end = endDate(entry);
+    return end ? end < today : entry.past === true || entry.type === "past";
+  };
+  let renderedDate;
+  let activeEvents = EVENTS;
+  function selectScenario(second) {
+    activeEvents = second ? EVENTS_DAPA2 : EVENTS;
+    document.getElementById("dapa1").setAttribute("aria-pressed", String(!second));
+    document.getElementById("dapa2").setAttribute("aria-pressed", String(second));
+    document.getElementById("scenario-note").textContent = second ? 'דפ"א 2 · ב-1/1 חמשוש ללא שיבוץ, ב-8/1 שוש עם שני מפקדים' : 'דפ"א 1 · חמשוש ושבת חינוך נשארים ללא שיבוץ';
+    renderedDate = undefined;
+    render();
+  }
+  document.getElementById("dapa1").addEventListener("click", () => selectScenario(false));
+  document.getElementById("dapa2").addEventListener("click", () => selectScenario(true));
+  function render() {
+  const today = israelDate();
+  if (today === renderedDate) return;
+  renderedDate = today;
+
   // --- fairness ---
   const stats = {};
-  for (const n of Object.keys(COMMANDERS)) stats[n] = { past:0, future:0 };
+  for (const n of Object.keys(COMMANDERS)) stats[n] = { past:0, future:0, spast:0, sfuture:0 };
   const groups = {};
-  for (const e of EVENTS) {
+  for (const e of activeEvents) {
     if (e.type !== "past" && e.type !== "duty") continue;
     for (const n of e.who) {
       if (!stats[n]) continue;
       const key = n + "|" + (e.stay || e.date);
-      (groups[key] = groups[key] || { n, types: [] }).types.push(e.type);
+      (groups[key] = groups[key] || { n, entries: [] }).entries.push(e);
     }
   }
   for (const g of Object.values(groups)) {
-    // a commander on several dates of the same weekend-stay (טל, 22-23/10) counts once
-    if (g.types.length > 1) {
-      if (g.types.includes("past")) stats[g.n].past++; else stats[g.n].future++;
-    }
-    else if (g.types[0] === "past") stats[g.n].past++;
+    // Count one weekend-stay once, as past only after its final date.
+    if (g.entries.every(e => isPast(e, today))) stats[g.n].past++;
     else stats[g.n].future++;
   }
+  for (const s of SAMALTO) {
+    for (const n of s.who) {
+      if (!stats[n]) continue;
+      const w = (/שישי/.test(s.day) && /שבת/.test(s.day)) ? 2 : 1;
+      if (isPast(s, today)) stats[n].spast += w; else stats[n].sfuture += w;
+    }
+  }
   const rows = Object.entries(stats)
-    .map(([n,s]) => ({ n, ...s, total: s.past + s.future }))
+    .map(([n,s]) => ({ n, ...s, total: s.past + s.future + s.spast + s.sfuture }))
     .sort((a,b) => b.total - a.total);
   const max = Math.max(...rows.map(r => r.total), 1);
   document.getElementById("fair").innerHTML = rows.map(r => {
@@ -152,19 +216,19 @@
     return `<div class="frow">
       ${chip(r.n)}
       <div class="bar-wrap"><div class="bar" style="width:${Math.round(r.total/max*100)}%;background:${c.fg}"></div></div>
-      <div class="counts"><b>${r.total}</b> שושים<br>${r.past} עבר · ${r.future} מתוכנן</div>
+      <div class="counts"><b>${r.total}</b> תורנויות<br>שושים ${r.past + r.future} · סמלתו ${r.spast + r.sfuture}<br>${r.past + r.spast} עבר · ${r.future + r.sfuture} מתוכנן</div>
     </div>`;
   }).join("");
 
   // --- schedule ---
-  document.getElementById("sched").innerHTML = EVENTS.map(e => {
+  document.getElementById("sched").innerHTML = activeEvents.map(e => {
     let body = "";
     if (e.type === "duty" || e.type === "past") body = e.who.map(chip).join("");
     else if (e.type === "all") body = `<span class="all-pill">כולם נשארים</span>`;
     else body = `<span class="off-pill">אין שיבוץ</span>`;
     if (e.tag) body += ` <span class="stamp">${e.tag}</span>`;
     const note = e.note ? `<span class="note">${e.note}</span>` : "";
-    return `<div class="erow ${e.type}">
+    return `<div class="erow ${e.type === "past" ? "duty" : e.type}${isPast(e, today) ? " past" : ""}">
       <div class="date"><b>${e.date}</b><span>${e.day}</span></div>
       <div class="who">${body}${note}</div>
     </div>`;
@@ -174,12 +238,19 @@
   document.getElementById("samalto").innerHTML = SAMALTO.map(s => {
     const people = s.who.map((n, i) => {
       const p = s.posts ? s.posts[i] : s.post;
-      return chip(n) + `<span class="sml-post" style="background:${POSTS[p]}">סמלתו ${p}</span>`;
+      return chip(n) + (p ? `<span class="sml-post" style="background:${POSTS[p]}">סמלתו ${p}</span>` : "");
     }).join("");
-    return `<div class="erow${s.past ? " past" : ""}"><div class="date"><b>${s.date}</b><span>${s.day}</span></div><div class="who">${people}${s.note ? `<div class="note">${s.note}</div>` : ""}</div></div>`;
+    return `<div class="erow${isPast(s, today) ? " past" : ""}"><div class="date"><b>${s.date}</b><span>${s.day}</span></div><div class="who">${people}${s.note ? `<div class="note">${s.note}</div>` : ""}${(/שישי/.test(s.day) && /שבת/.test(s.day)) ? `<div class="note">סופ״ש (שישי + שבת) · נספר כ-2 סמלתו לכל אחד</div>` : ""}</div></div>`;
   }).join("");
 
   document.getElementById("upd").textContent = "עודכן לאחרונה: " + UPDATED_AT;
+  }
+  render();
+  // Refresh an already-open page after Israel midnight and after returning to it.
+  setInterval(render, 30000);
+  document.addEventListener("visibilitychange", render);
+  window.addEventListener("focus", render);
+  window.addEventListener("pageshow", render);
 })();
 </script>
 </body>
